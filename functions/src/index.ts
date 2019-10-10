@@ -323,7 +323,7 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
     }
     case "family": {
 
-      if (request.body.userMail == null || request.body.expiryDate == null || request.body.familyOwner == null) {
+      if (request.body.expiryDate == null || request.body.familyOwner == null) {
         response.sendStatus(400)
         return;
       }
@@ -331,8 +331,14 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
       let familyOwner: string = request.body.familyOwner;
       const userMailsString: string = request.body.userMail;
       const re = /\./gi;
-      let userMails: string[] = userMailsString.replace(re,"|").replace(/\s/g, "").split(",");
       familyOwner = familyOwner.replace(re,"|")
+
+      let userMails: string[] = []
+      if (request.body.userMail == null || request.body.userMail == "") {
+        userMails = userMailsString.replace(re,"|").replace(/\s/g, "").split(",");
+      }
+      
+      userMails.push(familyOwner);
 
       const expiryDateFromRequest: string = request.body.expiryDate
       const expiryDateFromRequestArray: string[] = expiryDateFromRequest.split("/")
@@ -352,7 +358,6 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
         for(const email in users) {
           currentMails.push(email);
         }
-        userMails.push(familyOwner);
 
         currentMails.forEach(function (currentMail) {
           if (userMails.indexOf(currentMail) < 0) {
