@@ -329,12 +329,12 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
       }
 
       let familyOwner: string = request.body.familyOwner;
-      const userMailsString: string = request.body.userMail;
       const re = /\./gi;
       familyOwner = familyOwner.replace(re,"|")
 
       let userMails: string[] = []
-      if (request.body.userMail == null || request.body.userMail == "") {
+      if (request.body.userMail != null && request.body.userMail != "") {
+        const userMailsString: string = request.body.userMail;
         userMails = userMailsString.replace(re,"|").replace(/\s/g, "").split(",");
       }
       
