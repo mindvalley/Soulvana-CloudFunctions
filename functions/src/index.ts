@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from "firebase-admin";
-const cors = require('cors')({origin: true});
+const cors = require('cors')({ origin: true });
 
 
 admin.initializeApp()
@@ -53,16 +53,16 @@ export const addWhiteListedUser = functions.https.onRequest((request, response) 
 );
 
 export const addWhiteListedDomain = functions.https.onRequest((request, response) => {
-  let domain: string = request.query.domain;
-  const expiryDate: string = request.query.expirey_date;
-  const userLimit: string = request.query.user_limit;
-  const expireyDateArray: string[] = expiryDate.split("/")
-  const re = /\./gi;
+  let domain: string = request.body.domain;
+  const expiryDateFromRequest: string = request.body.expirey_date;
+  const userLimit: string = request.body.user_limit;
+  const expiryDateFromRequestArray: string[] = expiryDateFromRequest.split("/")
+  const expiryDate = new Date(parseInt(expiryDateFromRequestArray[2]), parseInt(expiryDateFromRequestArray[1]) - 1, parseInt(expiryDateFromRequestArray[0])).getTime() + 86391360
+const re = /\./gi;
   domain = domain.replace(re, "|")
-  const expireTimeStamp = new Date(parseInt(expireyDateArray[0]), parseInt(expireyDateArray[1]) - 1, parseInt(expireyDateArray[2])).getTime()
-  admin.database().ref("whiteList/domains" + domain).set({
+  admin.database().ref("whiteList/domains/" + domain).set({
 
-    expiryDate: expireTimeStamp,
+    expiryDate: expiryDate,
     userLimit: userLimit
   }
   ).catch(err => console.log(err))
@@ -132,6 +132,8 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
 
   // replace all dots in email to "|"
   const dot = /\./gi;
+  let re = /\|/gi;
+
   userMail = userMail.replace(dot, "|")
 
   // verify for user single and family access
@@ -147,7 +149,7 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
         if (expiryDate >= now) {
           response.send({
             data: {
-              userMail: userMail.replace("|", "."),
+              userMail: userMail.replace(re, "."),
               hasAccess: true,
               accessType: accessType,
               familyOwner: null,
@@ -182,14 +184,14 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
                   }).catch(err => console.log(err));
 
                   usersInfo.push({
-                    email: mail.replace("|", "."),
+                    email: mail.replace(re, "."),
                     addDate: familySnapShot.child("familyMembers/" + mail + "/addDate").val(),
                     userFirstEnter: now,
                   });
 
                 } else {
                   usersInfo.push({
-                    email: mail.replace("|", "."),
+                    email: mail.replace(re, "."),
                     addDate: familySnapShot.child("familyMembers/" + mail + "/addDate").val(),
                     userFirstEnter: familySnapShot.child("familyMembers/" + mail + "/userFirstEnter").val(),
                   });
@@ -199,10 +201,10 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
 
               response.send({
                 data: {
-                  userMail: userMail.replace("|", "."),
+                  userMail: userMail.replace(re, "."),
                   hasAccess: true,
                   accessType: accessType,
-                  familyOwner: familyOwner.replace("|", "."),
+                  familyOwner: familyOwner.replace(re, "."),
                   familyMembers: usersInfo,
                   expiryDate: expiryDate,
                   expiryDateLiteral: new Date(expiryDate)
@@ -237,7 +239,7 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
 
               response.send({
                 data: {
-                  userMail: userMail.replace("|", "."),
+                  userMail: userMail.replace(re, "."),
                   hasAccess: true,
                   accessType: accessType,
                   familyOwner: null,
@@ -251,7 +253,7 @@ export const isWhiteListedV2 = functions.https.onRequest((request, response) => 
           }
           response.send({
             data: {
-              userMail: userMail.replace("|", "."),
+              userMail: userMail.replace(re, "."),
               hasAccess: false,
               accessType: null,
               familyOwner: null,
@@ -277,7 +279,7 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
   switch (accessType) {
     case "basic": {
 
-      if (request.body.userMail === null || (request.body.expiryDate === null && request.body.addDays === null)) {
+      if (request.body.userMail == null || (request.body.expiryDate == null && request.body.addDays == null)) {
         response.sendStatus(400)
         return;
       }
@@ -288,7 +290,7 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
 
       userMails.forEach(function (userMail) {
 
-        if (request.body.expiryDate !== null) {
+        if (request.body.expiryDate != null) {
           const expiryDateFromRequest: string = request.body.expiryDate
           const expiryDateFromRequestArray: string[] = expiryDateFromRequest.split("/")
           const expiryDate = new Date(parseInt(expiryDateFromRequestArray[2]), parseInt(expiryDateFromRequestArray[1]) - 1, parseInt(expiryDateFromRequestArray[0])).getTime()
@@ -296,7 +298,6 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
           admin.database().ref("whiteList/users/" + userMail).update({
             expiryDate: expiryDate + 86391360
           }).catch(err => console.log(err));
-          response.sendStatus(200);
         } else {
           admin.database().ref("whiteList/users/" + userMail)
             .once('value').then(function (userSnapShot) {
@@ -305,7 +306,7 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
 
               const addDays = request.body.addDays
 
-              if (expiryDate === null) {
+              if (expiryDate == null) {
                 expiryDate = new Date().getTime();
               }
 
@@ -314,27 +315,27 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
               admin.database().ref("whiteList/users/" + userMail).update({
                 expiryDate: expiryDate
               }).catch(err => console.log(err));
-              response.sendStatus(200);
             }).catch(err => console.log(err));
         }
       });
+      response.sendStatus(200);
 
       break;
     }
     case "family": {
 
-      if (request.body.expiryDate === null || request.body.familyOwner === null) {
+      if (request.body.expiryDate == null || request.body.familyOwner == null) {
         response.sendStatus(400)
         return;
       }
 
       let familyOwner: string = request.body.familyOwner;
-      const userMailsString: string = request.body.userMail;
       const re = /\./gi;
       familyOwner = familyOwner.replace(re, "|")
 
       let userMails: string[] = []
-      if (request.body.userMail == null || request.body.userMail == "") {
+      if (request.body.userMail != null && request.body.userMail != "") {
+        const userMailsString: string = request.body.userMail;
         userMails = userMailsString.replace(re, "|").replace(/\s/g, "").split(",");
       }
 
@@ -394,9 +395,8 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
     }
   }
 
-  })
-});
 
+})});
 
 
 // Update Family Plan
@@ -405,22 +405,22 @@ export const addWhiteList = functions.https.onRequest((request, response) => {
 export const getWhiteListedUsers = functions.https.onRequest((request, response) => {
   return cors(request, response, () => {
 
-  admin.database().ref("whiteList/users/")
-    .once('value').then(function (whiteListedUsers) {
-      let resultUsers = new Array();
-      let re = /\|/gi;
+    admin.database().ref("whiteList/users/")
+      .once('value').then(function (whiteListedUsers) {
+        let resultUsers = new Array();
+        let re = /\|/gi;
 
-      whiteListedUsers.forEach(function (user) {
-        var obj = user.val();
-        var key=""
-        var date = new Date(obj.expiryDate)
-        var dateValue =date.getDay()+"/"+date.getMonth()+"/"+date.getFullYear()
-        if(user.key!==null){
-key=user.key
-        }
+        whiteListedUsers.forEach(function (user) {
+          var obj = user.val();
+          var key = ""
+         var date = new Date(obj.expiryDate)
+          var dateValue = date.getDate() + "/" + (date.getMonth()+1) + "/" + date.getFullYear()
+          if (user.key !== null) {
+            key = user.key
+          }
 
-         var jsonUser ={
-            userMail: key.replace( re ,"."),
+          var jsonUser = {
+            userMail: key.replace(re, "."),
             hasAccess: true,
             accessType: obj.accessType,
             familyOwner: null,
@@ -428,11 +428,180 @@ key=user.key
             expiryDate: obj.expiryDate,
             expiryDateLiteral: dateValue
           }
-   
-        resultUsers.push(jsonUser)
+
+          resultUsers.push(jsonUser)
         })
-  
-        response.send({data:resultUsers});
+
+        response.send({ data: resultUsers });
       }).catch(err => console.log(err));
   });
+});
+
+export const getUserReferralInfo = functions.https.onRequest((request, response) => {
+  return cors(request, response, () => {
+    const now = new Date().getTime();
+    const milliSecondsInDay = 86400000
+    let userEmail: String = request.body.userMail;
+    const re = /\./gi;
+    userEmail = userEmail.replace(re, "|")
+    admin.database().ref("whiteList/referral/" + userEmail)
+      .once('value').then(function (referralUserData) {
+
+        let numberOfFriends = referralUserData.child("noOfReferredUsers").val();
+        let numberOfDaysGained = referralUserData.child("noOfDaysRecived").val();
+        if (numberOfDaysGained === null) {
+          numberOfDaysGained = 0
+        }
+        if (numberOfFriends === null) {
+          numberOfFriends = 0
+        }
+
+        admin.database().ref("whiteList/users/" + userEmail)
+          .once('value').then(function (userSnapShot) {
+
+            let expiryDate = userSnapShot.child("expiryDate").val();
+            let remainingDays = expiryDate - now
+
+            if (remainingDays < 0) {
+              remainingDays = 0
+            } else {
+              remainingDays = Math.round(remainingDays / milliSecondsInDay)
+            }
+            response.send(
+              {
+                numOfFriendsJoined: numberOfFriends,
+                numOfDaysGained: numberOfDaysGained,
+                remainingDays: remainingDays
+              });
+          }).catch(err => console.log(err));
+      }).catch(err => console.log(err));
+  })
+});
+
+
+
+export const setReferredUserData = functions.https.onRequest((request, response) => {
+  return cors(request, response, () => {
+    const now = new Date().getTime();
+    const milliSecondsInDay = 86400000
+    const re = /\./gi;
+    const spaceRe=/ /gi;
+
+
+    //Data Recived from  Request
+    let referredUserMail: String = request.body.referredUserMail;
+    let referreingUserMail: String = request.body.referreingUserMail;
+    let campaignID: String = request.body.campaignID;
+
+
+    //Update the mail
+    referredUserMail = referredUserMail.replace(re, "|")
+    referreingUserMail = referreingUserMail.replace(re, "|")
+    referreingUserMail = referreingUserMail.replace(spaceRe,"+")
+
+    console.log(referredUserMail)
+
+    admin.database().ref("whiteList/users/" + referredUserMail)
+    .once('value').then(function (refferedUserData) {
+      let currentRefferedExpireyDate= refferedUserData.child("expiryDate").val()
+      if(currentRefferedExpireyDate ===null||currentRefferedExpireyDate<now){
+        currentRefferedExpireyDate=now
+      }
+      admin.database().ref("whiteList/users/" + referreingUserMail)
+      .once('value').then(function (refferingUserData) {
+        let currentRefferingExpireyDate= refferingUserData.child("expiryDate").val()
+        if(currentRefferingExpireyDate ===null||currentRefferingExpireyDate<now){
+          currentRefferingExpireyDate=now
+        }
+    admin.database().ref("whiteList/campaigns/" + campaignID)
+      .once('value').then(function (campaignData) {
+
+        let numberOfDays = campaignData.child("numberOfDays").val();
+        let numberOfUsers = campaignData.child("numberOfUsers").val();
+        let maxNumbersOfUsers = campaignData.child("maxNumOfReferral").val();
+
+
+        admin.database().ref("whiteList/campaigns/" + campaignID).update({
+          numberOfUsers: numberOfUsers + 1
+
+        }).catch(err => console.log(err))
+
+        admin.database().ref("whiteList/users/" + referredUserMail).update({
+
+          expiryDate: currentRefferedExpireyDate + (numberOfDays * milliSecondsInDay),
+          referral: referreingUserMail
+
+        }).catch(err => console.log(err));
+
+        admin.database().ref("whiteList/users/" + referreingUserMail).update({
+
+          expiryDate: currentRefferingExpireyDate + (numberOfDays * milliSecondsInDay),
+          referral: referreingUserMail
+
+        }).catch(err => console.log(err));
+        admin.database().ref("whiteList/referral/" + referreingUserMail)
+          .once('value').then(function (referralUserData) {
+            console.log(referreingUserMail)
+            let noOfReferredUsers = referralUserData.child("noOfReferredUsers").val();
+            let noOfDaysRecived = referralUserData.child("noOfDaysRecived").val();
+             if(noOfReferredUsers<maxNumbersOfUsers){
+               noOfDaysRecived = noOfDaysRecived + numberOfDays
+             }
+            admin.database().ref("whiteList/referral/" + referreingUserMail).update({
+              noOfReferredUsers: noOfReferredUsers + 1,
+              noOfDaysRecived: noOfDaysRecived
+
+            }).catch(err => console.log(err))
+            admin.database().ref("whiteList/referral/" + referreingUserMail + "/referredUsers/" + referredUserMail).update({
+              campaignID: campaignID,
+              registerDate: now
+
+            }).catch(err => console.log(err))
+
+          }).catch(err => console.log(err));
+
+      }).catch(err => console.log(err));
+  }).catch(err => console.log(err));
+  response.sendStatus(200)
+}).catch(err => console.log(err));
+});
+});
+export const getReviewsByMediaId = functions.https.onRequest ((request, response) =>{
+  return cors(request, response, () => {
+    //Data Recived from  Request
+    const mediaId: String = request.body.mediaId;
+    let limit = parseInt(request.body.limit);
+    admin.database().ref("ratings/"+mediaId+"/")
+      .once('value').then(function (ratingList) {
+        const resultRatings = new Array();
+        let count=0
+  
+        var BreakException = {};
+       
+      try {
+
+        ratingList.forEach(function (rating) {
+       if(limit!==null){
+          if(count===limit){
+          throw BreakException
+        }}
+          const obj = rating.val();
+      if(obj.show_enable===1&&obj.review!==""){
+          const jsonRating = {
+            userAvater: obj.user_url,
+            rating: obj.rating_value,
+            review: obj.review,
+            userName: obj.user_name,
+          }
+          count = count+1
+          resultRatings.push(jsonRating)
+        }
+        })
+      } catch (e) {
+        if (e !== BreakException) throw e;
+      }
+
+        response.send({ data: resultRatings });
+      }).catch(err => console.log(err));
+})
 });
